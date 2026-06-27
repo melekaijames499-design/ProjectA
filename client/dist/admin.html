@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — SmartFarm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#1B4332', light: '#2D6A4F', pale: '#D8F3DC' },
+            secondary: '#52B788',
+            accent: { DEFAULT: '#F59E0B', dark: '#D97706' },
+            danger: '#DC2626',
+          },
+          fontFamily: { sans: ['Inter','sans-serif'], display: ['Playfair Display','serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .nav-item.active { background: rgba(255,255,255,0.15); color: white; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(27,67,50,0.12); }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px);} to { opacity:1; transform:translateY(0);} }
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center; }
+    .modal.open { display:flex; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+<div class="flex min-h-screen">
+
+  <!-- SIDEBAR -->
+  <aside class="w-64 bg-primary text-white flex flex-col fixed top-0 left-0 h-full z-40">
+    <div class="px-6 py-5 border-b border-white/10">
+      <a href="/index.html" class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-secondary rounded-xl flex items-center justify-center text-lg shrink-0">🌱</div>
+        <div>
+          <p class="font-display font-bold text-lg leading-tight">SmartFarm</p>
+          <p class="text-green-300 text-xs">Admin Portal</p>
+        </div>
+      </a>
+    </div>
+
+    <nav class="flex-1 px-3 py-6 space-y-1">
+      <button onclick="showTab('overview')" id="nav-overview" class="nav-item active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-green-100 hover:bg-white/10 transition-all">
+        <span class="text-lg">📊</span> Overview
+      </button>
+      <button onclick="showTab('farms')" id="nav-farms" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-green-100 hover:bg-white/10 transition-all">
+        <span class="text-lg">🌾</span> Farms
+      </button>
+      <button onclick="showTab('users')" id="nav-users" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-green-100 hover:bg-white/10 transition-all">
+        <span class="text-lg">👥</span> Users
+      </button>
+      <button onclick="showTab('alerts')" id="nav-alerts" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-green-100 hover:bg-white/10 transition-all">
+        <span class="text-lg">🔔</span> Alerts
+        <span id="alert-badge" class="hidden ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+      </button>
+    </nav>
+
+    <div class="px-6 py-4 border-t border-white/10">
+      <div class="flex items-center gap-3 mb-3">
+        <div id="user-avatar" class="w-9 h-9 bg-accent rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0">A</div>
+        <div class="overflow-hidden">
+          <p id="user-name" class="text-sm font-semibold truncate">Admin</p>
+          <p class="text-xs text-green-300">System Administrator</p>
+        </div>
+      </div>
+      <button onclick="logout()" class="w-full text-xs text-white/60 hover:text-white py-2 flex items-center gap-2 transition-colors">
+        <span>🚪</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="ml-64 flex-1 flex flex-col min-h-screen">
+    <header class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-30">
+      <div>
+        <h1 id="page-title" class="text-xl font-bold text-primary">System Overview</h1>
+        <p class="text-sm text-gray-500">SmartFarm Irrigation — Admin Control Panel</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div id="socket-dot" class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+        <span id="socket-label" class="text-xs text-gray-400">Connecting...</span>
+        <button onclick="refreshCurrent()" class="text-xs text-secondary border border-secondary/30 px-3 py-1.5 rounded-lg hover:bg-secondary/5 transition-colors font-medium">
+          ↻ Refresh
+        </button>
+      </div>
+    </header>
+
+    <div class="flex-1 p-8">
+
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!-- TAB 1: OVERVIEW -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <div id="tab-overview" class="tab-panel active fade-in">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl">🌾</span>
+              <span class="text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full font-medium">Active</span>
+            </div>
+            <p id="stat-farms" class="text-3xl font-bold text-primary">—</p>
+            <p class="text-xs text-gray-500 mt-1">Total Farms</p>
+          </div>
+          <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl">👥</span>
+              <span class="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">System</span>
+            </div>
+            <p id="stat-users" class="text-3xl font-bold text-blue-600">—</p>
+            <p class="text-xs text-gray-500 mt-1">Total Users</p>
+          </div>
+          <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl">📡</span>
+              <span class="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded-full font-medium">Today</span>
+            </div>
+            <p id="stat-readings" class="text-3xl font-bold text-purple-600">—</p>
+            <p class="text-xs text-gray-500 mt-1">Readings Today</p>
+          </div>
+          <div class="stat-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-2xl">🔔</span>
+              <span class="text-xs px-2 py-1 bg-red-50 text-red-600 rounded-full font-medium">Unresolved</span>
+            </div>
+            <p id="stat-alerts" class="text-3xl font-bold text-red-500">—</p>
+            <p class="text-xs text-gray-500 mt-1">Active Alerts</p>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <h3 class="font-bold text-primary text-base mb-4">📈 Readings Over 30 Days</h3>
+            <div class="h-52"><canvas id="readings-chart"></canvas></div>
+          </div>
+          <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <h3 class="font-bold text-primary text-base mb-4">🔔 Alerts by Farm</h3>
+            <div class="h-52"><canvas id="alerts-chart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Quick Farms Summary -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+          <h3 class="font-bold text-primary text-base mb-4">🌾 Farm Status Overview</h3>
+          <div id="quick-farms" class="text-center text-gray-400 text-sm py-4">Loading farms...</div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!-- TAB 2: FARMS -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <div id="tab-farms" class="tab-panel fade-in">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="font-display font-bold text-primary text-2xl">Farm Management</h2>
+          <button onclick="openModal('farm-modal')" class="bg-primary hover:bg-primary-light text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all">
+            + New Farm
+          </button>
+        </div>
+
+        <div id="farms-msg" class="hidden mb-4 p-3 rounded-xl text-sm font-medium"></div>
+        <div id="farms-list" class="text-center text-gray-400 py-12">Loading farms...</div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!-- TAB 3: USERS -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <div id="tab-users" class="tab-panel fade-in">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="font-display font-bold text-primary text-2xl">User Management</h2>
+          <button onclick="openModal('user-modal')" class="bg-primary hover:bg-primary-light text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all">
+            + New User
+          </button>
+        </div>
+
+        <!-- Role Filter -->
+        <div class="flex gap-2 mb-5">
+          <button onclick="filterUsers('all')" id="filter-all" class="filter-btn px-4 py-1.5 rounded-full text-sm font-medium bg-primary text-white">All</button>
+          <button onclick="filterUsers('admin')" id="filter-admin" class="filter-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-gray-300 text-gray-600 hover:border-primary">Admin</button>
+          <button onclick="filterUsers('farmer')" id="filter-farmer" class="filter-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-gray-300 text-gray-600 hover:border-primary">Farmer</button>
+          <button onclick="filterUsers('viewer')" id="filter-viewer" class="filter-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-gray-300 text-gray-600 hover:border-primary">Viewer</button>
+        </div>
+
+        <div id="users-msg" class="hidden mb-4 p-3 rounded-xl text-sm font-medium"></div>
+        <div id="users-list" class="text-center text-gray-400 py-12">Loading users...</div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!-- TAB 4: ALERTS -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <div id="tab-alerts" class="tab-panel fade-in">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="font-display font-bold text-primary text-2xl">System Alerts</h2>
+          <div class="flex gap-2">
+            <select id="alert-filter-sev" onchange="loadAllAlerts()" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secondary bg-white">
+              <option value="all">All Severities</option>
+              <option value="critical">Critical</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
+            </select>
+            <select id="alert-filter-status" onchange="loadAllAlerts()" class="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-secondary bg-white">
+              <option value="false">Active</option>
+              <option value="true">Resolved</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+        </div>
+        <div id="alerts-list" class="text-center text-gray-400 py-12">Loading alerts...</div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODALS -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Create Farm Modal -->
+<div id="farm-modal" class="modal">
+  <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-lg mx-4">
+    <h3 class="font-display font-bold text-primary text-xl mb-6">Create New Farm</h3>
+    <div id="farm-modal-error" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600"></div>
+    <form id="farm-form" class="space-y-4" onsubmit="createFarm(event)">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Farm Name *</label>
+        <input type="text" id="farm-name" required placeholder="e.g. Ochieng's Maize Farm"
+          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+        <input type="text" id="farm-location" required placeholder="e.g. Nakuru County"
+          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Crop Type</label>
+        <input type="text" id="farm-crop" placeholder="e.g. Maize, Tomatoes, Kale"
+          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Area (acres)</label>
+        <input type="number" id="farm-area" min="0" step="0.1" placeholder="e.g. 2.5"
+          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Assign Owner (User ID)</label>
+        <select id="farm-owner" class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary bg-white">
+          <option value="">— Select a farmer —</option>
+        </select>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('farm-modal')" class="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-50 transition-all">Cancel</button>
+        <button type="submit" id="farm-submit-btn" class="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-light transition-all">Create Farm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div id="user-modal" class="modal">
+  <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-lg mx-4">
+    <h3 class="font-display font-bold text-primary text-xl mb-6">Create New User</h3>
+    <div id="user-modal-error" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600"></div>
+    <form id="user-form" class="space-y-4" onsubmit="createUser(event)">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+        <input type="text" id="user-name-input" required placeholder="e.g. Amina Wanjiru"
+          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+        <input type="email" id="user-email-input" required placeholder="user@email.com"
+          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+        <input type="password" id="user-pass-input" required minlength="6" placeholder="At least 6 characters"
+          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+        <select id="user-role-input" onchange="toggleFarmSelect()" class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary bg-white">
+          <option value="farmer">Farmer</option>
+          <option value="viewer">Viewer</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div id="farm-assign-row">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Assign to Farm</label>
+        <select id="user-farm-input" class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary bg-white">
+          <option value="">— No farm —</option>
+        </select>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('user-modal')" class="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-50 transition-all">Cancel</button>
+        <button type="submit" id="user-submit-btn" class="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-light transition-all">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // ── AUTH CHECK ─────────────────────────────────────────────────────────────
+  const token = sessionStorage.getItem('accessToken');
+  const me    = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+  if (!token || !me || me.role !== 'admin') window.location.href = '/login.html?error=unauthorized';
+
+  let farmsList = [];
+  let usersList = [];
+  let readingsChart = null;
+  let alertsBarChart = null;
+  let currentTab = 'overview';
+
+  // ── API HELPER ─────────────────────────────────────────────────────────────
+  const API = (path, opts = {}) => fetch(path, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
+    credentials: 'include', ...opts
+  }).then(r => r.json());
+
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleString('en-KE', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  // ── SOCKET ─────────────────────────────────────────────────────────────────
+  function initSocket() {
+    const socket = io({ auth: { token } });
+    socket.on('connect', () => {
+      socket.emit('join_admin');
+      document.getElementById('socket-dot').className = 'w-2.5 h-2.5 rounded-full bg-green-400';
+      document.getElementById('socket-label').textContent = 'Live';
+    });
+    socket.on('disconnect', () => {
+      document.getElementById('socket-dot').className = 'w-2.5 h-2.5 rounded-full bg-gray-300';
+      document.getElementById('socket-label').textContent = 'Reconnecting...';
+    });
+    socket.on('new_alert', () => { loadAlertBadge(); if (currentTab === 'alerts') loadAllAlerts(); });
+    socket.on('new_reading', () => { if (currentTab === 'overview') loadAnalytics(); });
+  }
+
+  // ── TAB SWITCHING ──────────────────────────────────────────────────────────
+  function showTab(name) {
+    currentTab = name;
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.getElementById('nav-' + name).classList.add('active');
+
+    const titles = { overview: 'System Overview', farms: 'Farm Management', users: 'User Management', alerts: 'System Alerts' };
+    document.getElementById('page-title').textContent = titles[name];
+
+    if (name === 'overview') loadAnalytics();
+    if (name === 'farms')    loadFarms();
+    if (name === 'users')    loadUsers('all');
+    if (name === 'alerts')   loadAllAlerts();
+  }
+
+  function refreshCurrent() { showTab(currentTab); }
+
+  // ── ANALYTICS ─────────────────────────────────────────────────────────────
+  async function loadAnalytics() {
+    try {
+      const data = await API('/api/admin/analytics');
+      if (!data.success) return;
+      const d = data.data;
+
+      document.getElementById('stat-farms').textContent    = d.summary.totalFarms;
+      document.getElementById('stat-users').textContent    = d.summary.totalUsers;
+      document.getElementById('stat-readings').textContent = d.summary.readingsToday;
+      document.getElementById('stat-alerts').textContent   = d.summary.activeAlerts;
+
+      updateAlertBadge(d.summary.activeAlerts);
+
+      // Readings chart
+      const rCtx = document.getElementById('readings-chart').getContext('2d');
+      if (readingsChart) readingsChart.destroy();
+      readingsChart = new Chart(rCtx, {
+        type: 'bar',
+        data: {
+          labels: d.readingsChart.map(r => r.date.slice(5)),
+          datasets: [{ label: 'Readings', data: d.readingsChart.map(r => r.count), backgroundColor: '#52B788', borderRadius: 4 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 } } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } }
+        }
+      });
+
+      // Alerts chart
+      const aCtx = document.getElementById('alerts-chart').getContext('2d');
+      if (alertsBarChart) alertsBarChart.destroy();
+      if (d.alertsChart.length) {
+        alertsBarChart = new Chart(aCtx, {
+          type: 'doughnut',
+          data: {
+            labels: d.alertsChart.map(a => a.farmName),
+            datasets: [{ data: d.alertsChart.map(a => a.count), backgroundColor: ['#52B788','#F59E0B','#3B82F6','#DC2626','#8B5CF6'] }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { size: 10 } } } } }
+        });
+      } else {
+        document.getElementById('alerts-chart').closest('.bg-white').querySelector('.h-52').innerHTML =
+          '<p class="text-gray-400 text-sm text-center pt-16">No alert data yet.</p>';
+      }
+
+      // Quick farms
+      loadQuickFarms();
+    } catch (e) { console.error('loadAnalytics', e); }
+  }
+
+  async function loadQuickFarms() {
+    const c = document.getElementById('quick-farms');
+    try {
+      const data = await API('/api/admin/farms');
+      if (!data.success || !data.data.length) { c.innerHTML = '<p class="text-gray-400 text-sm">No farms yet.</p>'; return; }
+      farmsList = data.data;
+      c.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        ${data.data.map(f => `
+          <div class="border border-gray-200 rounded-xl p-4 text-left">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-semibold text-primary text-sm">${f.name}</h4>
+              <span class="text-xs px-2 py-0.5 rounded-full ${f.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${f.isActive ? '● Active' : '○ Inactive'}</span>
+            </div>
+            <p class="text-xs text-gray-500">📍 ${f.location || '—'}</p>
+            <p class="text-xs text-gray-500">🌱 ${f.cropType || 'Not set'}</p>
+            <p class="text-xs text-gray-500">👤 ${f.owner?.name || 'No owner'}</p>
+          </div>`).join('')}
+      </div>`;
+    } catch (e) { c.innerHTML = '<p class="text-red-400 text-sm">Failed to load.</p>'; }
+  }
+
+  // ── FARMS ─────────────────────────────────────────────────────────────────
+  async function loadFarms() {
+    const c = document.getElementById('farms-list');
+    c.innerHTML = '<p class="text-gray-400 text-sm text-center py-8">Loading...</p>';
+    try {
+      const data = await API('/api/admin/farms');
+      if (!data.success) { c.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Failed to load farms.</p>'; return; }
+      farmsList = data.data;
+      populateFarmOwnerDropdowns();
+      if (!data.data.length) { c.innerHTML = '<p class="text-gray-400 text-sm text-center py-8">No farms yet. Create the first one!</p>'; return; }
+      c.innerHTML = `
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 uppercase tracking-wider text-xs">
+              <tr>
+                <th class="px-6 py-3 text-left">Farm</th>
+                <th class="px-6 py-3 text-left">Location</th>
+                <th class="px-6 py-3 text-left">Crop</th>
+                <th class="px-6 py-3 text-left">Owner</th>
+                <th class="px-6 py-3 text-center">Status</th>
+                <th class="px-6 py-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              ${data.data.map(f => `
+                <tr class="hover:bg-gray-50 transition-colors">
+                  <td class="px-6 py-4 font-semibold text-primary">${f.name}</td>
+                  <td class="px-6 py-4 text-gray-500">📍 ${f.location || '—'}</td>
+                  <td class="px-6 py-4 text-gray-500">${f.cropType || '—'}</td>
+                  <td class="px-6 py-4 text-gray-500">${f.owner?.name || '—'}</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="text-xs px-2 py-1 rounded-full ${f.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">${f.isActive ? '● Active' : '○ Inactive'}</span>
+                  </td>
+                  <td class="px-6 py-4 text-center">
+                    <button onclick="toggleFarm('${f._id}', ${f.isActive})" class="text-xs text-${f.isActive ? 'red' : 'green'}-500 hover:underline font-medium mr-3">
+                      ${f.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch (e) { c.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Error loading farms.</p>'; }
+  }
+
+  async function createFarm(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('farm-modal-error');
+    errEl.classList.add('hidden');
+    const btn = document.getElementById('farm-submit-btn');
+    btn.disabled = true; btn.textContent = 'Creating...';
+    try {
+      const data = await API('/api/admin/farms', {
+        method: 'POST',
+        body: JSON.stringify({
+          name:     document.getElementById('farm-name').value.trim(),
+          location: document.getElementById('farm-location').value.trim(),
+          cropType: document.getElementById('farm-crop').value.trim(),
+          area:     parseFloat(document.getElementById('farm-area').value) || undefined,
+          owner:    document.getElementById('farm-owner').value || undefined,
+        })
+      });
+      if (!data.success) {
+        errEl.textContent = data.error || 'Failed to create farm.';
+        errEl.classList.remove('hidden');
+      } else {
+        closeModal('farm-modal');
+        document.getElementById('farm-form').reset();
+        showMsg('farms-msg', '✅ Farm created successfully!', 'green');
+        loadFarms();
+      }
+    } catch (e2) {
+      errEl.textContent = 'Server error.';
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create Farm';
+    }
+  }
+
+  async function toggleFarm(id, isActive) {
+    const action = isActive ? 'deactivate' : 'reactivate';
+    if (!confirm(`Are you sure you want to ${action} this farm?`)) return;
+    try {
+      const data = await API(`/api/admin/farms/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ isActive: !isActive })
+      });
+      if (data.success) { loadFarms(); loadAnalytics(); }
+    } catch (e) { console.error(e); }
+  }
+
+  // ── USERS ─────────────────────────────────────────────────────────────────
+  let currentRoleFilter = 'all';
+
+  function filterUsers(role) {
+    currentRoleFilter = role;
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.className = 'filter-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-gray-300 text-gray-600 hover:border-primary';
+    });
+    document.getElementById('filter-' + role).className = 'filter-btn px-4 py-1.5 rounded-full text-sm font-medium bg-primary text-white';
+    loadUsers(role);
+  }
+
+  async function loadUsers(role) {
+    const c = document.getElementById('users-list');
+    c.innerHTML = '<p class="text-gray-400 text-sm text-center py-8">Loading...</p>';
+    try {
+      const url = role === 'all' ? '/api/admin/users' : `/api/admin/users?role=${role}`;
+      const data = await API(url);
+      if (!data.success) { c.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Failed to load users.</p>'; return; }
+      usersList = data.data;
+      if (!data.data.length) { c.innerHTML = '<p class="text-gray-400 text-sm text-center py-8">No users found.</p>'; return; }
+
+      const roleColor = { admin: 'purple', farmer: 'green', viewer: 'blue' };
+      c.innerHTML = `
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 uppercase tracking-wider text-xs">
+              <tr>
+                <th class="px-6 py-3 text-left">User</th>
+                <th class="px-6 py-3 text-left">Email</th>
+                <th class="px-6 py-3 text-center">Role</th>
+                <th class="px-6 py-3 text-left">Farm</th>
+                <th class="px-6 py-3 text-center">Status</th>
+                <th class="px-6 py-3 text-center">Last Login</th>
+                <th class="px-6 py-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              ${data.data.map(u => `
+                <tr class="hover:bg-gray-50 transition-colors ${!u.isActive ? 'opacity-50' : ''}">
+                  <td class="px-6 py-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-full bg-${roleColor[u.role] || 'gray'}-100 text-${roleColor[u.role] || 'gray'}-700 flex items-center justify-center text-xs font-bold shrink-0">
+                        ${(u.name || 'U')[0].toUpperCase()}
+                      </div>
+                      <span class="font-medium text-gray-900">${u.name}</span>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 text-gray-500">${u.email}</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="text-xs px-2 py-1 rounded-full bg-${roleColor[u.role] || 'gray'}-100 text-${roleColor[u.role] || 'gray'}-700 font-medium">${u.role}</span>
+                  </td>
+                  <td class="px-6 py-4 text-gray-500 text-xs">${u.farmId?.name || '—'}</td>
+                  <td class="px-6 py-4 text-center">
+                    <span class="text-xs px-2 py-0.5 rounded-full ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}">${u.isActive ? 'Active' : 'Inactive'}</span>
+                  </td>
+                  <td class="px-6 py-4 text-center text-xs text-gray-400">${u.lastLogin ? fmtDate(u.lastLogin) : 'Never'}</td>
+                  <td class="px-6 py-4 text-center">
+                    ${u._id !== me.id ? `
+                      <button onclick="toggleUser('${u._id}', ${u.isActive})" class="text-xs text-${u.isActive ? 'red' : 'green'}-500 hover:underline font-medium">
+                        ${u.isActive ? 'Deactivate' : 'Reactivate'}
+                      </button>` : '<span class="text-xs text-gray-300">You</span>'}
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch (e) { c.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Error loading users.</p>'; }
+  }
+
+  async function createUser(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('user-modal-error');
+    errEl.classList.add('hidden');
+    const btn = document.getElementById('user-submit-btn');
+    btn.disabled = true; btn.textContent = 'Creating...';
+    try {
+      const data = await API('/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          name:     document.getElementById('user-name-input').value.trim(),
+          email:    document.getElementById('user-email-input').value.trim(),
+          password: document.getElementById('user-pass-input').value,
+          role:     document.getElementById('user-role-input').value,
+          farmId:   document.getElementById('user-farm-input').value || null,
+        })
+      });
+      if (!data.success) {
+        errEl.textContent = data.error || 'Failed to create user.';
+        errEl.classList.remove('hidden');
+      } else {
+        closeModal('user-modal');
+        document.getElementById('user-form').reset();
+        showMsg('users-msg', '✅ User created successfully!', 'green');
+        loadUsers(currentRoleFilter);
+      }
+    } catch (e2) {
+      errEl.textContent = 'Server error.';
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create User';
+    }
+  }
+
+  async function toggleUser(id, isActive) {
+    const action = isActive ? 'deactivate' : 'reactivate';
+    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+    try {
+      const data = await API(`/api/admin/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ isActive: !isActive })
+      });
+      if (data.success) loadUsers(currentRoleFilter);
+    } catch (e) { console.error(e); }
+  }
+
+  function toggleFarmSelect() {
+    const role = document.getElementById('user-role-input').value;
+    document.getElementById('farm-assign-row').style.display = role === 'admin' ? 'none' : '';
+  }
+
+  // ── ALERTS ────────────────────────────────────────────────────────────────
+  async function loadAllAlerts() {
+    const c = document.getElementById('alerts-list');
+    c.innerHTML = '<p class="text-gray-400 text-sm text-center py-8">Loading...</p>';
+    const sev    = document.getElementById('alert-filter-sev').value;
+    const status = document.getElementById('alert-filter-status').value;
+    try {
+      let url = '/api/admin/alerts?';
+      if (sev !== 'all')    url += `severity=${sev}&`;
+      if (status !== 'all') url += `isResolved=${status}&`;
+      const data = await API(url);
+      if (!data.success) { c.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Failed to load alerts.</p>'; return; }
+      if (!data.data.length) {
+        c.innerHTML = '<p class="text-green-600 text-sm text-center py-8">✅ No alerts matching filters.</p>';
+        return;
+      }
+
+      const severityColors = { critical: 'red', warning: 'yellow', info: 'blue', high: 'red', medium: 'orange', low: 'gray' };
+      c.innerHTML = `<div class="space-y-3">
+        ${data.data.map(a => {
+          const col = severityColors[a.severity] || 'gray';
+          return `
+          <div class="bg-white border border-${col}-200 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+            <div class="w-2 h-2 rounded-full bg-${col}-500 mt-2 shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-${col}-100 text-${col}-700">${a.severity?.toUpperCase()}</span>
+                <span class="text-xs text-gray-400">${a.farmId?.name || 'Unknown Farm'} — ${a.farmId?.location || ''}</span>
+                <span class="text-xs text-gray-300">${fmtDate(a.createdAt)}</span>
+              </div>
+              <p class="text-sm text-gray-700">${a.message}</p>
+              ${a.isResolved ? `<p class="text-xs text-green-600 mt-1">✓ Resolved by ${a.resolvedBy?.name || 'system'} at ${fmtDate(a.resolvedAt)}</p>` : ''}
+            </div>
+            ${!a.isResolved ? `
+              <button onclick="resolveAlert('${a._id}', this)" class="shrink-0 text-xs px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-light transition-colors font-medium">
+                Resolve
+              </button>` : `<span class="shrink-0 text-xs text-green-600 font-medium">Resolved</span>`}
+          </div>`;
+        }).join('')}
+      </div>`;
+
+      loadAlertBadge();
+    } catch (e) { c.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Error loading alerts.</p>'; }
+  }
+
+  async function resolveAlert(id, btn) {
+    btn.textContent = '...'; btn.disabled = true;
+    try {
+      const data = await API(`/api/alerts/${id}/resolve`, { method: 'PUT' });
+      if (data.success) { loadAllAlerts(); loadAnalytics(); }
+    } catch (e) { btn.disabled = false; btn.textContent = 'Resolve'; }
+  }
+
+  async function loadAlertBadge() {
+    try {
+      const data = await API('/api/admin/alerts?isResolved=false');
+      const count = data.success ? data.data.length : 0;
+      updateAlertBadge(count);
+    } catch (e) {}
+  }
+
+  function updateAlertBadge(count) {
+    const badge = document.getElementById('alert-badge');
+    badge.textContent = count;
+    badge.classList.toggle('hidden', count === 0);
+    document.getElementById('stat-alerts').textContent = count;
+  }
+
+  // ── MODAL HELPERS ─────────────────────────────────────────────────────────
+  function openModal(id) {
+    populateFarmOwnerDropdowns();
+    document.getElementById(id).classList.add('open');
+  }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // Close on backdrop click
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open'); });
+  });
+
+  function populateFarmOwnerDropdowns() {
+    // Farm owner dropdown (farmers only)
+    const ownerSel = document.getElementById('farm-owner');
+    const userFarm = document.getElementById('user-farm-input');
+    if (ownerSel) {
+      const farmers = usersList.filter(u => u.role === 'farmer');
+      ownerSel.innerHTML = '<option value="">— Select a farmer —</option>' +
+        farmers.map(u => `<option value="${u._id}">${u.name} (${u.email})</option>`).join('');
+    }
+    if (userFarm) {
+      userFarm.innerHTML = '<option value="">— No farm —</option>' +
+        farmsList.map(f => `<option value="${f._id}">${f.name}</option>`).join('');
+    }
+  }
+
+  function showMsg(elId, msg, color) {
+    const el = document.getElementById(elId);
+    el.textContent = msg;
+    el.className = `mb-4 p-3 rounded-xl text-sm font-medium bg-${color}-50 border border-${color}-200 text-${color}-700`;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 4000);
+  }
+
+  // ── AUTH ──────────────────────────────────────────────────────────────────
+  function logout() {
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    sessionStorage.clear();
+    window.location.href = '/login.html';
+  }
+
+  // ── INIT ──────────────────────────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    if (me) {
+      document.getElementById('user-name').textContent  = me.name || 'Admin';
+      document.getElementById('user-avatar').textContent = (me.name || 'A')[0].toUpperCase();
+    }
+    initSocket();
+    // Pre-load farms and users for dropdowns
+    API('/api/admin/farms').then(d => { if (d.success) farmsList = d.data; });
+    API('/api/admin/users').then(d => { if (d.success) usersList = d.data; });
+    loadAnalytics();
+    loadAlertBadge();
+  });
+</script>
+</body>
+</html>

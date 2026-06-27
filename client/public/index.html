@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SmartFarm Irrigation System — AI-powered precision irrigation monitoring for modern farmers. Monitor soil moisture, temperature, and automate your water pump from anywhere.">
+  <meta name="keywords" content="smart irrigation, soil moisture monitoring, precision farming, IoT agriculture, automated irrigation, ESP32 farming">
+  <meta name="author" content="James Melekai">
+  <meta property="og:title" content="SmartFarm — Intelligent Irrigation System">
+  <meta property="og:description" content="Monitor your farm in real-time. Automate irrigation. Save water. Increase yields.">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1200">
+  <title>SmartFarm — Intelligent Irrigation System</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <script>
+    // Extend Tailwind with brand colors
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary:   { DEFAULT: '#1B4332', light: '#2D6A4F', pale: '#D8F3DC' },
+            secondary: '#52B788',
+            accent:    { DEFAULT: '#F59E0B', dark: '#D97706' },
+            danger:    '#DC2626',
+            dark:      '#0A1628',
+            text: {
+              primary: '#1F2937',
+              muted:   '#6B7280'
+            },
+            surface:   '#FFFFFF',
+            bglight:   '#F0FDF4',
+            bordercol: '#E5E7EB'
+          },
+          fontFamily: {
+            sans:    ['Inter', 'sans-serif'],
+            display: ['Playfair Display', 'serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; }
+
+    /* Navbar scroll effect */
+    .navbar-scrolled {
+      background: rgba(27, 67, 50, 0.97) !important;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    }
+
+    /* Hero overlay */
+    .hero-overlay {
+      background: linear-gradient(
+        135deg,
+        rgba(10, 22, 40, 0.75) 0%,
+        rgba(27, 67, 50, 0.60) 100%
+      );
+    }
+
+    /* Section fade-in animation */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Feature card hover */
+    .feature-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 40px rgba(27,67,50,0.15);
+    }
+
+    /* Pricing card highlight */
+    .pricing-popular {
+      border: 2px solid #52B788;
+      transform: scale(1.05);
+    }
+
+    /* Gallery image hover */
+    .gallery-item:hover img {
+      transform: scale(1.08);
+    }
+
+    /* FAQ accordion */
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+    .faq-answer.open { max-height: 500px; }
+
+    /* Mobile menu */
+    #mobile-menu { transition: max-height 0.4s ease, opacity 0.3s ease; }
+
+    /* Smooth scroll offset for sticky nav */
+    section { scroll-margin-top: 80px; }
+
+    /* Gradient text */
+    .gradient-text {
+      background: linear-gradient(135deg, #52B788, #1B4332);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* System status pulse */
+    .status-pulse {
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body class="text-text-primary bg-bglight selection:bg-secondary selection:text-white">
+
+  <!-- NAVBAR -->
+  <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 px-6">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      
+      <!-- Logo -->
+      <a href="#home" class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center text-xl">🌱</div>
+        <div>
+          <span class="text-white font-display font-bold text-xl">SmartFarm</span>
+          <span class="block text-xs text-green-300 -mt-1">Irrigation System</span>
+        </div>
+      </a>
+
+      <!-- Desktop Nav -->
+      <div class="hidden lg:flex items-center gap-1">
+        <a href="#home" class="nav-link text-white/80 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition-all">Home</a>
+        <a href="#about" class="nav-link text-white/80 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition-all">About</a>
+        <a href="#how-it-works" class="nav-link text-white/80 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition-all">How It Works</a>
+        <a href="#features" class="nav-link text-white/80 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition-all">Features</a>
+        <a href="#services" class="nav-link text-white/80 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition-all">Services</a>
+        <a href="#technology" class="nav-link text-white/80 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition-all">Technology</a>
+        <a href="#gallery" class="nav-link text-white/80 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition-all">Gallery</a>
+
+        <a href="#contact" class="nav-link text-white/80 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 text-sm transition-all">Contact</a>
+      </div>
+
+      <!-- CTA Buttons -->
+      <div class="hidden lg:flex items-center gap-3">
+        <!-- System status dot -->
+        <div class="flex items-center gap-2 mr-2">
+          <div id="nav-status-dot" class="w-2 h-2 rounded-full bg-gray-400"></div>
+          <span id="nav-status-text" class="text-xs text-white/60">Checking...</span>
+        </div>
+        <a href="/admin-auth.html" class="text-white/70 hover:text-white text-sm font-medium transition-all mr-2">Admin Access</a>
+        <a href="/login.html" class="border border-white/40 text-white px-5 py-2 rounded-lg text-sm hover:bg-white/10 transition-all">Sign In</a>
+        <a href="/register.html" class="bg-accent hover:bg-accent-dark text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all">Get Started</a>
+      </div>
+
+      <!-- Mobile hamburger -->
+      <button id="hamburger" class="lg:hidden text-white p-2" onclick="toggleMobileMenu()">
+        <i data-lucide="menu" class="w-6 h-6"></i>
+      </button>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="lg:hidden overflow-hidden max-h-0 opacity-0 bg-primary-light/95 backdrop-blur-md mt-4 rounded-2xl mx-4">
+      <div class="p-6 space-y-2">
+        <a href="#home" onclick="closeMobileMenu()" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm">Home</a>
+        <a href="#about" onclick="closeMobileMenu()" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm">About Us</a>
+        <a href="#how-it-works" onclick="closeMobileMenu()" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm">How It Works</a>
+        <a href="#features" onclick="closeMobileMenu()" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm">Features</a>
+        <a href="#services" onclick="closeMobileMenu()" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm">Services</a>
+        <a href="#technology" onclick="closeMobileMenu()" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm">Technology</a>
+        <a href="#gallery" onclick="closeMobileMenu()" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm">Gallery</a>
+
+        <a href="#contact" onclick="closeMobileMenu()" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm">Contact</a>
+        <a href="/admin-auth.html" class="block text-white/80 hover:text-white py-3 border-b border-white/10 text-sm font-medium">Admin Access</a>
+        <div class="flex gap-3 pt-4">
+          <a href="/login.html" class="flex-1 text-center border border-white/40 text-white py-3 rounded-xl text-sm">Sign In</a>
+          <a href="/register.html" class="flex-1 text-center bg-accent text-white py-3 rounded-xl text-sm font-semibold">Get Started</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="home" class="relative h-screen flex items-center justify-center pt-20">
+    <div class="absolute inset-0 z-0">
+      <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1920&q=80" alt="Irrigated farm fields" class="w-full h-full object-cover">
+      <div class="absolute inset-0 hero-overlay"></div>
+    </div>
+    
+    <div class="relative z-10 text-center px-6 max-w-4xl mx-auto fade-up">
+      <span class="inline-block py-1 px-3 rounded-full bg-secondary/20 border border-secondary/50 text-green-300 text-sm font-medium mb-6">
+        🌱 AI-Powered Precision Agriculture
+      </span>
+      <h1 class="text-5xl md:text-7xl font-display font-bold text-white mb-6 leading-tight">
+        Smarter Irrigation.<br>
+        Healthier Crops.
+      </h1>
+      <p class="text-lg md:text-xl text-green-50 mb-10 max-w-2xl mx-auto leading-relaxed">
+        Monitor soil moisture, temperature, and humidity in real-time. 
+        Automate your water pump. Get instant alerts. Grow more with less water.
+      </p>
+      
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 text-sm text-green-200">
+        <div class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-secondary"></i> No hardware required to get started</div>
+        <div class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-secondary"></i> Setup in under 10 minutes</div>
+        <div class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-secondary"></i> Works on any device</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT US -->
+  <section id="about" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid lg:grid-cols-2 gap-16 items-center">
+        <div class="fade-up">
+          <h4 class="text-secondary font-semibold uppercase tracking-wider mb-2">About SmartFarm</h4>
+          <h2 class="text-4xl font-display font-bold text-primary mb-6">Born from the Farm. Built for the Future.</h2>
+          <div class="text-gray-600 space-y-4 mb-8">
+
+            <p>By combining IoT hardware (ESP32 microcontrollers, DHT11 sensors, soil moisture probes) with a cloud-connected web platform, SmartFarm gives every farmer — from a small quarter-acre plot to a large commercial operation — the power to monitor their fields and control irrigation from a smartphone or computer, anytime, anywhere.</p>
+            <p>Our mission is simple: reduce water waste, increase crop yields, and put the tools of precision agriculture within reach of every farmer.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-start gap-4 p-4 rounded-xl bg-green-50 border border-green-100">
+              <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm text-xl">🎯</div>
+              <div>
+                <h5 class="font-bold text-primary">Our Mission</h5>
+                <p class="text-sm text-gray-600">Democratize precision agriculture for smallholder farmers</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 p-4 rounded-xl bg-green-50 border border-green-100">
+              <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm text-xl">👁</div>
+              <div>
+                <h5 class="font-bold text-primary">Our Vision</h5>
+                <p class="text-sm text-gray-600">A world where no crop fails due to poor water management</p>
+              </div>
+            </div>
+            <div class="flex items-start gap-4 p-4 rounded-xl bg-green-50 border border-green-100">
+              <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm text-xl">💡</div>
+              <div>
+                <h5 class="font-bold text-primary">Our Values</h5>
+                <p class="text-sm text-gray-600">Simplicity, reliability, sustainability, and farmer-first design</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative fade-up" style="transition-delay: 200ms;">
+          <img src="https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=800&q=80" alt="Farmer in field" class="rounded-2xl shadow-2xl transform rotate-2">
+          <div class="absolute -bottom-6 -left-6 bg-white p-4 rounded-xl shadow-xl flex items-center gap-4">
+            <div class="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white">
+              <i data-lucide="award" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 font-medium">Developed for</p>
+              <p class="font-bold text-primary">African Agriculture</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works" class="py-24 bg-bglight relative overflow-hidden">
+    <div class="max-w-7xl mx-auto px-6 relative z-10">
+      <div class="text-center max-w-2xl mx-auto mb-16 fade-up">
+        <h4 class="text-secondary font-semibold uppercase tracking-wider mb-2">Process</h4>
+        <h2 class="text-4xl font-display font-bold text-primary mb-4">How It Works</h2>
+        <p class="text-gray-600">From connecting sensors to harvesting bigger yields in four simple steps.</p>
+      </div>
+
+      <div class="relative">
+        <div class="hidden lg:block absolute top-12 left-0 right-0 h-0.5 bg-green-200 -z-10"></div>
+        
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          
+          <div class="fade-up text-center relative bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="w-8 h-8 rounded-full bg-secondary text-white font-bold flex items-center justify-center mx-auto absolute -top-4 left-1/2 -translate-x-1/2 shadow-lg z-10 border-4 border-bglight">1</div>
+            <div class="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6 mt-4 text-primary">
+              <i data-lucide="radio" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-xl font-bold text-primary mb-3">📡 Connect Your Sensors</h3>
+            <p class="text-sm text-gray-600">Install the ESP32 microcontroller with soil moisture, temperature, and humidity sensors in your field. Or enter readings manually through the web dashboard.</p>
+          </div>
+
+          <div class="fade-up text-center relative bg-white p-6 rounded-2xl shadow-sm border border-gray-100" style="transition-delay: 100ms;">
+            <div class="w-8 h-8 rounded-full bg-secondary text-white font-bold flex items-center justify-center mx-auto absolute -top-4 left-1/2 -translate-x-1/2 shadow-lg z-10 border-4 border-bglight">2</div>
+            <div class="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6 mt-4 text-primary">
+              <i data-lucide="bar-chart-3" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-xl font-bold text-primary mb-3">📊 Monitor in Real-Time</h3>
+            <p class="text-sm text-gray-600">Your farm dashboard updates live with every new reading. View trends, charts, and current conditions from any device, anywhere in the world.</p>
+          </div>
+
+          <div class="fade-up text-center relative bg-white p-6 rounded-2xl shadow-sm border border-gray-100" style="transition-delay: 200ms;">
+            <div class="w-8 h-8 rounded-full bg-secondary text-white font-bold flex items-center justify-center mx-auto absolute -top-4 left-1/2 -translate-x-1/2 shadow-lg z-10 border-4 border-bglight">3</div>
+            <div class="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6 mt-4 text-primary">
+              <i data-lucide="bell-ring" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-xl font-bold text-primary mb-3">🔔 Receive Smart Alerts</h3>
+            <p class="text-sm text-gray-600">The system automatically checks your readings against your configured thresholds and sends instant alerts when conditions need your attention.</p>
+          </div>
+
+          <div class="fade-up text-center relative bg-white p-6 rounded-2xl shadow-sm border border-gray-100" style="transition-delay: 300ms;">
+            <div class="w-8 h-8 rounded-full bg-secondary text-white font-bold flex items-center justify-center mx-auto absolute -top-4 left-1/2 -translate-x-1/2 shadow-lg z-10 border-4 border-bglight">4</div>
+            <div class="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6 mt-4 text-primary">
+              <i data-lucide="droplet" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-xl font-bold text-primary mb-3">💧 Automate Irrigation</h3>
+            <p class="text-sm text-gray-600">When soil moisture drops below your threshold, SmartFarm automatically triggers your water pump. Schedule watering windows or control the pump manually.</p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center max-w-2xl mx-auto mb-16 fade-up">
+        <h4 class="text-secondary font-semibold uppercase tracking-wider mb-2">Platform Tools</h4>
+        <h2 class="text-4xl font-display font-bold text-primary mb-4">Features Designed for Farmers</h2>
+        <p class="text-gray-600">Everything you need to optimize your water usage and protect your crops, built into one intuitive platform.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        
+        <div class="feature-card bg-white border border-gray-200 p-8 rounded-2xl transition-all duration-300 fade-up">
+          <div class="w-12 h-12 bg-green-100 text-primary rounded-xl flex items-center justify-center mb-6">
+            <i data-lucide="activity" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Real-Time Monitoring</h3>
+          <p class="text-gray-600 text-sm mb-4 leading-relaxed">Live soil moisture, temperature, and humidity readings updated continuously. All data stored with timestamps for historical analysis.</p>
+          <a href="/register.html" class="text-secondary font-semibold hover:text-primary flex items-center gap-1 text-sm transition-colors">Learn more <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+        </div>
+
+        <div class="feature-card bg-white border border-gray-200 p-8 rounded-2xl transition-all duration-300 fade-up" style="transition-delay: 100ms;">
+          <div class="w-12 h-12 bg-green-100 text-primary rounded-xl flex items-center justify-center mb-6">
+            <i data-lucide="bell" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Smart Alerts</h3>
+          <p class="text-gray-600 text-sm mb-4 leading-relaxed">Automatic alerts triggered by threshold violations. Critical alerts shown prominently; all alerts logged with severity levels.</p>
+          <a href="/register.html" class="text-secondary font-semibold hover:text-primary flex items-center gap-1 text-sm transition-colors">Learn more <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+        </div>
+
+        <div class="feature-card bg-white border border-gray-200 p-8 rounded-2xl transition-all duration-300 fade-up" style="transition-delay: 200ms;">
+          <div class="w-12 h-12 bg-green-100 text-primary rounded-xl flex items-center justify-center mb-6">
+            <i data-lucide="droplets" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Pump Automation</h3>
+          <p class="text-gray-600 text-sm mb-4 leading-relaxed">Pump turns on automatically when moisture drops below your minimum threshold and off when it's restored. Full manual override always available.</p>
+          <a href="/register.html" class="text-secondary font-semibold hover:text-primary flex items-center gap-1 text-sm transition-colors">Learn more <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+        </div>
+
+        <div class="feature-card bg-white border border-gray-200 p-8 rounded-2xl transition-all duration-300 fade-up">
+          <div class="w-12 h-12 bg-green-100 text-primary rounded-xl flex items-center justify-center mb-6">
+            <i data-lucide="calendar" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Irrigation Scheduling</h3>
+          <p class="text-gray-600 text-sm mb-4 leading-relaxed">Set recurring irrigation schedules by day and time. The scheduler runs independently and keeps your crops watered even when you're offline.</p>
+          <a href="/register.html" class="text-secondary font-semibold hover:text-primary flex items-center gap-1 text-sm transition-colors">Learn more <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+        </div>
+
+        <div class="feature-card bg-white border border-gray-200 p-8 rounded-2xl transition-all duration-300 fade-up" style="transition-delay: 100ms;">
+          <div class="w-12 h-12 bg-green-100 text-primary rounded-xl flex items-center justify-center mb-6">
+            <i data-lucide="map" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Multi-Farm Management</h3>
+          <p class="text-gray-600 text-sm mb-4 leading-relaxed">Admin portal lets you manage multiple farms, assign farmers, configure thresholds per farm, and view system-wide analytics from one dashboard.</p>
+          <a href="/register.html" class="text-secondary font-semibold hover:text-primary flex items-center gap-1 text-sm transition-colors">Learn more <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+        </div>
+
+        <div class="feature-card bg-white border border-gray-200 p-8 rounded-2xl transition-all duration-300 fade-up" style="transition-delay: 200ms;">
+          <div class="w-12 h-12 bg-green-100 text-primary rounded-xl flex items-center justify-center mb-6">
+            <i data-lucide="shield" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Role-Based Access</h3>
+          <p class="text-gray-600 text-sm mb-4 leading-relaxed">Three-tier access system: Admin (full control), Farmer (their farm only), Viewer (read-only monitoring). Each role sees only what they need.</p>
+          <a href="/register.html" class="text-secondary font-semibold hover:text-primary flex items-center gap-1 text-sm transition-colors">Learn more <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section id="services" class="py-24 bg-bglight">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center max-w-2xl mx-auto mb-16 fade-up">
+        <h4 class="text-secondary font-semibold uppercase tracking-wider mb-2">Our Offerings</h4>
+        <h2 class="text-4xl font-display font-bold text-primary mb-4">Complete Irrigation Services</h2>
+        <p class="text-gray-600">Hardware and software combined to give you total control.</p>
+      </div>
+
+      <div class="grid lg:grid-cols-3 gap-8">
+        
+        <div class="bg-white rounded-2xl overflow-hidden shadow-lg fade-up">
+          <img src="https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80" alt="Soil" class="w-full h-48 object-cover">
+          <div class="p-8">
+            <h3 class="text-xl font-bold text-primary mb-3">Soil Monitoring</h3>
+            <p class="text-gray-600 text-sm mb-6">Continuous soil moisture measurement with calibrated sensors. Track moisture levels at multiple depths. Receive alerts before your crops experience water stress. Historical data helps you understand your soil's unique water retention patterns.</p>
+            <a href="/register.html" class="inline-block border border-primary text-primary px-4 py-2 rounded-lg font-medium hover:bg-primary hover:text-white transition-colors text-sm">Get Started</a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl overflow-hidden shadow-lg fade-up" style="transition-delay: 100ms;">
+          <img src="https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=600&q=80" alt="Climate" class="w-full h-48 object-cover">
+          <div class="p-8">
+            <h3 class="text-xl font-bold text-primary mb-3">Climate Tracking</h3>
+            <p class="text-gray-600 text-sm mb-6">Monitor ambient temperature and relative humidity alongside soil conditions. Heat stress alerts protect your crops during extreme weather. Climate data is logged alongside irrigation events for full environmental context.</p>
+            <a href="/register.html" class="inline-block border border-primary text-primary px-4 py-2 rounded-lg font-medium hover:bg-primary hover:text-white transition-colors text-sm">Get Started</a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl overflow-hidden shadow-lg fade-up" style="transition-delay: 200ms;">
+          <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&q=80" alt="Irrigation" class="w-full h-48 object-cover">
+          <div class="p-8">
+            <h3 class="text-xl font-bold text-primary mb-3">Automated Irrigation</h3>
+            <p class="text-gray-600 text-sm mb-6">Close the loop between sensing and action. Your water pump responds automatically to real-time soil conditions. Set your thresholds once and let SmartFarm handle the rest — with full logging of every pump activation.</p>
+            <a href="/register.html" class="inline-block border border-primary text-primary px-4 py-2 rounded-lg font-medium hover:bg-primary hover:text-white transition-colors text-sm">Get Started</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- TECHNOLOGY -->
+  <section id="technology" class="py-24 bg-dark text-white overflow-hidden relative">
+    <div class="max-w-7xl mx-auto px-6 relative z-10">
+      <div class="grid lg:grid-cols-2 gap-16 items-center">
+        
+        <div class="fade-up">
+          <h4 class="text-secondary font-semibold uppercase tracking-wider mb-2">Under the Hood</h4>
+          <h2 class="text-4xl font-display font-bold mb-8">Modern Stack for Precision Farming</h2>
+          
+          <div class="space-y-8">
+            <div>
+              <h5 class="text-xl font-bold text-green-300 mb-3 flex items-center gap-2"><i data-lucide="cpu" class="w-5 h-5"></i> Hardware Layer</h5>
+              <ul class="space-y-2 text-gray-300 text-sm">
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-secondary"></div> ESP32 Microcontroller (WiFi + Bluetooth)</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-secondary"></div> DHT11 Temperature & Humidity Sensor</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-secondary"></div> Capacitive Soil Moisture Sensor</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-secondary"></div> 5V Relay Module for pump control</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-secondary"></div> 12V Submersible Water Pump</li>
+              </ul>
+            </div>
+
+            <div>
+              <h5 class="text-xl font-bold text-green-300 mb-3 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5"></i> Software Layer</h5>
+              <ul class="space-y-2 text-gray-300 text-sm">
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-accent"></div> Node.js + Express.js backend API</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-accent"></div> MongoDB Atlas cloud database</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-accent"></div> Socket.IO for real-time data streaming</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-accent"></div> JWT authentication with role-based access</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-accent"></div> Automated cron-based irrigation scheduling</li>
+              </ul>
+            </div>
+
+            <div>
+              <h5 class="text-xl font-bold text-green-300 mb-3 flex items-center gap-2"><i data-lucide="monitor-smartphone" class="w-5 h-5"></i> Dashboard Layer</h5>
+              <ul class="space-y-2 text-gray-300 text-sm">
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-white"></div> Real-time sensor cards with live updates</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-white"></div> Interactive historical charts (Chart.js)</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-white"></div> Multi-portal system (Admin / Farmer / Viewer)</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-white"></div> Mobile-responsive web interface</li>
+                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-white"></div> No app installation required</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="fade-up p-8 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md relative">
+          <!-- Flow Diagram Visual -->
+          <div class="absolute -top-4 -right-4 w-24 h-24 bg-secondary/30 blur-3xl rounded-full"></div>
+          <div class="absolute bottom-4 left-4 w-32 h-32 bg-accent/20 blur-3xl rounded-full"></div>
+          
+          <div class="space-y-6 relative z-10">
+            <div class="flex items-center gap-4 bg-dark/50 p-4 rounded-xl border border-white/10">
+              <div class="w-12 h-12 bg-secondary/20 text-secondary rounded-lg flex items-center justify-center shrink-0"><i data-lucide="leaf" class="w-6 h-6"></i></div>
+              <div><p class="font-bold">Field Sensors</p><p class="text-xs text-gray-400">Captures soil & climate data</p></div>
+            </div>
+            <div class="flex justify-center"><i data-lucide="arrow-down" class="text-gray-500"></i></div>
+            <div class="flex items-center gap-4 bg-dark/50 p-4 rounded-xl border border-white/10">
+              <div class="w-12 h-12 bg-green-500/20 text-green-400 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="cpu" class="w-6 h-6"></i></div>
+              <div><p class="font-bold">ESP32 Microcontroller</p><p class="text-xs text-gray-400">Processes & transmits</p></div>
+            </div>
+            <div class="flex justify-center"><i data-lucide="wifi" class="text-gray-500"></i></div>
+            <div class="flex items-center gap-4 bg-dark/50 p-4 rounded-xl border border-white/10">
+              <div class="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="cloud" class="w-6 h-6"></i></div>
+              <div><p class="font-bold">Cloud Server</p><p class="text-xs text-gray-400">Node.js API & MongoDB</p></div>
+            </div>
+            <div class="flex justify-center"><i data-lucide="arrow-down" class="text-gray-500"></i></div>
+            <div class="flex items-center gap-4 bg-dark/50 p-4 rounded-xl border border-white/10">
+              <div class="w-12 h-12 bg-accent/20 text-accent rounded-lg flex items-center justify-center shrink-0"><i data-lucide="smartphone" class="w-6 h-6"></i></div>
+              <div><p class="font-bold">Web Dashboard & Pump Control</p><p class="text-xs text-gray-400">Alerts & automation triggered</p></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section id="gallery" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center max-w-2xl mx-auto mb-16 fade-up">
+        <h4 class="text-secondary font-semibold uppercase tracking-wider mb-2">Gallery</h4>
+        <h2 class="text-4xl font-display font-bold text-primary mb-4">Farms We Serve</h2>
+        <p class="text-gray-600">A glimpse into modern agriculture powered by SmartFarm.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[250px]">
+        
+        <div class="gallery-item relative rounded-xl overflow-hidden cursor-pointer group fade-up">
+          <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&q=80" alt="Aerial view of irrigated farmland" class="w-full h-full object-cover transition-transform duration-700">
+          <div class="absolute inset-0 bg-dark/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+            <p class="text-white font-semibold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-300">Aerial view of irrigated farmland</p>
+          </div>
+        </div>
+
+        <div class="gallery-item relative rounded-xl overflow-hidden cursor-pointer group fade-up" style="transition-delay: 100ms;">
+          <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&q=80" alt="Center-pivot irrigation system" class="w-full h-full object-cover transition-transform duration-700">
+          <div class="absolute inset-0 bg-dark/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+            <p class="text-white font-semibold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-300">Center-pivot irrigation system</p>
+          </div>
+        </div>
+
+        <div class="gallery-item relative rounded-xl overflow-hidden cursor-pointer group fade-up" style="transition-delay: 200ms;">
+          <img src="https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&q=80" alt="Healthy soil ready for planting" class="w-full h-full object-cover transition-transform duration-700">
+          <div class="absolute inset-0 bg-dark/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+            <p class="text-white font-semibold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-300">Healthy soil ready for planting</p>
+          </div>
+        </div>
+
+        <div class="gallery-item relative rounded-xl overflow-hidden cursor-pointer group fade-up">
+          <img src="https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=800&q=80" alt="Farmer tending to crops" class="w-full h-full object-cover transition-transform duration-700">
+          <div class="absolute inset-0 bg-dark/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+            <p class="text-white font-semibold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-300">Farmer tending to crops</p>
+          </div>
+        </div>
+
+        <div class="gallery-item relative rounded-xl overflow-hidden cursor-pointer group fade-up" style="transition-delay: 100ms;">
+          <img src="https://images.unsplash.com/photo-1523741543316-beb7fc7023d8?w=800&q=80" alt="Drip irrigation on vegetable crops" class="w-full h-full object-cover transition-transform duration-700">
+          <div class="absolute inset-0 bg-dark/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+            <p class="text-white font-semibold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-300">Drip irrigation on vegetable crops</p>
+          </div>
+        </div>
+
+        <div class="gallery-item relative rounded-xl overflow-hidden cursor-pointer group fade-up" style="transition-delay: 200ms;">
+          <img src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=800&q=80" alt="Smart agriculture technology" class="w-full h-full object-cover transition-transform duration-700">
+          <div class="absolute inset-0 bg-dark/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+            <p class="text-white font-semibold text-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-300">Smart agriculture technology</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- CONTACT -->
+  <section id="contact" class="py-24 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="max-w-3xl mx-auto">
+        
+        <!-- Contact Form -->
+        <div class="bg-white border border-gray-200 rounded-3xl p-8 lg:p-12 shadow-xl fade-up" id="contact-form-container">
+          <h2 class="text-3xl font-display font-bold text-primary mb-2">Get In Touch</h2>
+          <p class="text-gray-500 mb-8">Have questions? We'd love to hear from you.</p>
+
+          <form id="contact-form" onsubmit="submitContactForm(event)" class="space-y-5">
+            <div id="contact-error" class="hidden p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-200 mb-4"></div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+              <input type="text" id="contact-name" required class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+              <input type="email" id="contact-email" required class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+              <select id="contact-subject" required class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary bg-white">
+                <option value="General Inquiry">General Inquiry</option>
+                <option value="Technical Support">Technical Support</option>
+                <option value="Pricing">Pricing</option>
+                <option value="Partnership">Partnership</option>
+                <option value="Demo Request">Demo Request</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+              <textarea id="contact-message" rows="5" required minlength="10" class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary resize-none"></textarea>
+            </div>
+            
+            <button type="submit" id="contact-submit-btn" class="w-full bg-accent hover:bg-accent-dark text-white font-bold py-4 rounded-xl transition-colors">
+              Send Message
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-primary text-white pt-20 pb-8">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
+        
+        <!-- Brand -->
+        <div>
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-secondary rounded-xl flex items-center justify-center text-xl">🌱</div>
+            <span class="font-display font-bold text-xl">SmartFarm</span>
+          </div>
+          <p class="text-green-100 text-sm mb-6 leading-relaxed">Precision irrigation for the modern farmer.</p>
+          <p class="text-green-300/70 text-xs mb-6">Developed by James Melekai | SCCF/05627P/2022</p>
+          <div class="flex gap-4">
+            <a href="#" class="text-white/60 hover:text-white transition-colors"><i data-lucide="twitter" class="w-5 h-5"></i></a>
+            <a href="#" class="text-white/60 hover:text-white transition-colors"><i data-lucide="facebook" class="w-5 h-5"></i></a>
+            <a href="#" class="text-white/60 hover:text-white transition-colors"><i data-lucide="linkedin" class="w-5 h-5"></i></a>
+            <a href="#" class="text-white/60 hover:text-white transition-colors"><i data-lucide="youtube" class="w-5 h-5"></i></a>
+          </div>
+        </div>
+
+        <!-- Links -->
+        <div>
+          <h4 class="font-bold text-lg mb-6">Quick Links</h4>
+          <ul class="space-y-3 text-sm text-green-100">
+            <li><a href="#about" class="hover:text-white transition-colors">About Us</a></li>
+            <li><a href="#how-it-works" class="hover:text-white transition-colors">How It Works</a></li>
+            <li><a href="#features" class="hover:text-white transition-colors">Features</a></li>
+            <li><a href="#services" class="hover:text-white transition-colors">Services</a></li>
+            <li><a href="#technology" class="hover:text-white transition-colors">Technology</a></li>
+            <li><a href="#gallery" class="hover:text-white transition-colors">Gallery</a></li>
+
+          </ul>
+        </div>
+
+        <!-- Support -->
+        <div>
+          <h4 class="font-bold text-lg mb-6">Support</h4>
+          <ul class="space-y-3 text-sm text-green-100">
+            <li><a href="#" class="hover:text-white transition-colors">Documentation</a></li>
+
+            <li><a href="#contact" class="hover:text-white transition-colors">Contact Support</a></li>
+            <li><a href="#" class="hover:text-white transition-colors" id="footer-status">System Status</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Privacy Policy</a></li>
+            <li><a href="#" class="hover:text-white transition-colors">Terms of Service</a></li>
+          </ul>
+        </div>
+
+      </div>
+
+      <div class="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/50">
+        <p>&copy; <span id="footer-year"></span> SmartFarm Irrigation System. All rights reserved.</p>
+        <p>Made with ❤️ for African farmers</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- SCRIPTS -->
+  <script>
+    // ── 1. NAVBAR: transparent → solid on scroll ──────────────────────────────
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 80) {
+        navbar.classList.add('navbar-scrolled');
+      } else {
+        navbar.classList.remove('navbar-scrolled');
+      }
+    });
+
+    // ── 2. MOBILE MENU ────────────────────────────────────────────────────────
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      const isOpen = menu.style.maxHeight !== '0px' && menu.style.maxHeight !== '';
+      if (isOpen) {
+        menu.style.maxHeight = '0px';
+        menu.style.opacity = '0';
+      } else {
+        menu.style.maxHeight = '600px';
+        menu.style.opacity = '1';
+      }
+    }
+    function closeMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      menu.style.maxHeight = '0px';
+      menu.style.opacity = '0';
+    }
+
+    // ── 3. ACTIVE NAV LINK on scroll ──────────────────────────────────────────
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(link => {
+            link.classList.remove('text-white', 'bg-white/20');
+            if (link.getAttribute('href') === `#${entry.target.id}`) {
+              link.classList.add('text-white', 'bg-white/20');
+            }
+          });
+        }
+      });
+    }, { threshold: 0.5 });
+    sections.forEach(s => observer.observe(s));
+
+    // ── 4. FADE-UP ANIMATIONS ─────────────────────────────────────────────────
+    const fadeObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-up').forEach(el => fadeObserver.observe(el));
+
+    // ── 7. CHECK API HEALTH for navbar + footer status ────────────────────────
+    async function checkAPIHealth() {
+      const dot  = document.getElementById('nav-status-dot');
+      const text = document.getElementById('nav-status-text');
+      const footerStatus = document.getElementById('footer-status');
+      const footerBadge  = document.getElementById('footer-status-badge');
+      try {
+        const res  = await fetch('/api/health');
+        const data = await res.json();
+        if (data.success) {
+          if (dot)  { dot.className  = 'w-2 h-2 rounded-full bg-green-400 status-pulse'; }
+          if (text) { text.textContent = 'System Online'; text.className = 'text-xs text-green-300'; }
+          if (footerStatus) footerStatus.innerHTML = 'System Status (🟢 Online)';
+          if (footerBadge)  footerBadge.innerHTML  = '🟢 All Systems Operational';
+        }
+      } catch {
+        if (dot)  { dot.className  = 'w-2 h-2 rounded-full bg-red-500'; }
+        if (text) { text.textContent = 'Offline'; text.className = 'text-xs text-red-300'; }
+        if (footerStatus) footerStatus.innerHTML = 'System Status (🔴 Offline)';
+        if (footerBadge)  footerBadge.innerHTML  = '🔴 Service Disruption';
+      }
+    }
+
+    // ── 8. CONTACT FORM ───────────────────────────────────────────────────────
+    async function submitContactForm(e) {
+      e.preventDefault();
+      const btn = document.getElementById('contact-submit-btn');
+      const errEl = document.getElementById('contact-error');
+      const name    = document.getElementById('contact-name').value.trim();
+      const email   = document.getElementById('contact-email').value.trim();
+      const subject = document.getElementById('contact-subject').value;
+      const message = document.getElementById('contact-message').value.trim();
+
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      try {
+        const res  = await fetch('/api/contact', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ name, email, subject, message }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to send message');
+
+        // Show success state
+        document.getElementById('contact-form-container').innerHTML = `
+          <div class="text-center py-12">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span class="text-3xl text-secondary"><i data-lucide="check"></i></span>
+            </div>
+            <h3 class="text-xl font-bold text-primary mb-2">Message Sent!</h3>
+            <p class="text-gray-600">${data.message}</p>
+          </div>
+        `;
+        lucide.createIcons(); // refresh icon
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Send Message';
+      }
+    }
+
+
+
+    // ── 10. INIT ──────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      checkAPIHealth();
+      // Set current year in footer
+      const yearEl = document.getElementById('footer-year');
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
+    });
+  </script>
+
+</body>
+</html>

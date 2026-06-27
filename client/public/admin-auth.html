@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Access — SmartFarm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#1B4332', light: '#2D6A4F', pale: '#D8F3DC' },
+            secondary: '#52B788',
+            accent: { DEFAULT: '#F59E0B', dark: '#D97706' },
+          },
+          fontFamily: { sans: ['Inter','sans-serif'], display: ['Playfair Display','serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-primary flex items-center justify-center p-4">
+
+  <div class="w-full max-w-md fade-in">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <a href="/index.html" class="inline-flex items-center gap-3">
+        <div class="w-12 h-12 bg-gray-700 rounded-2xl flex items-center justify-center text-2xl shadow-lg border border-gray-600">🛡️</div>
+        <div class="text-left">
+          <p class="font-display font-bold text-white text-2xl">SmartFarm</p>
+          <p class="text-gray-400 text-xs -mt-1">Administrator Portal</p>
+        </div>
+      </a>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-10 relative overflow-hidden border-t-4 border-primary">
+      
+      <!-- Login View -->
+      <div id="view-login" class="block">
+        <h1 class="text-2xl font-display font-bold text-gray-900 mb-1">Admin Sign In</h1>
+        <p class="text-sm text-gray-500 mb-6">Authenticate to access the system dashboard.</p>
+
+        <div id="login-error" class="hidden mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium"></div>
+        <div id="login-success" class="hidden mb-5 p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 font-medium"></div>
+
+        <form onsubmit="handleLogin(event)" class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+            <input type="email" id="login-email" placeholder="admin@farm.com" required
+              class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input type="password" id="login-password" placeholder="••••••••" required
+              class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          <button type="submit" id="login-btn"
+            class="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 rounded-xl transition-all shadow-md">
+            Sign In
+          </button>
+        </form>
+
+        <p class="text-center text-sm text-gray-500 mt-6 pt-6 border-t border-gray-100">
+          Need an admin account? 
+          <button type="button" onclick="toggleView('register')" class="text-primary font-semibold hover:underline">Register here</button>
+        </p>
+      </div>
+
+      <!-- Register View -->
+      <div id="view-register" class="hidden">
+        <h1 class="text-2xl font-display font-bold text-gray-900 mb-1">Setup Admin</h1>
+        <p class="text-sm text-gray-500 mb-6">Create a new system administrator account.</p>
+
+        <div id="register-error" class="hidden mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-medium"></div>
+
+        <form onsubmit="handleRegister(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <input type="text" id="reg-name" placeholder="Admin Name" required
+              class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" id="reg-email" placeholder="admin@farm.com" required
+              class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input type="password" id="reg-password" placeholder="••••••••" required minlength="6"
+              class="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          
+          <button type="submit" id="register-btn"
+            class="w-full bg-primary hover:bg-primary-light text-white font-bold py-3 mt-2 rounded-xl transition-all shadow-md">
+            Create Account
+          </button>
+        </form>
+
+        <p class="text-center text-sm text-gray-500 mt-6 pt-6 border-t border-gray-100">
+          Already have an account? 
+          <button type="button" onclick="toggleView('login')" class="text-primary font-semibold hover:underline">Sign in</button>
+        </p>
+      </div>
+
+    </div>
+
+    <p class="text-center text-xs text-white/40 mt-6">
+      <a href="/index.html" class="hover:text-white">← Back to public site</a>
+    </p>
+  </div>
+
+  <script>
+    function toggleView(view) {
+      document.getElementById('view-login').classList.add('hidden');
+      document.getElementById('view-register').classList.add('hidden');
+      document.getElementById('view-' + view).classList.remove('hidden');
+      document.getElementById('view-' + view).classList.add('fade-in');
+      hideErrors();
+    }
+
+    function hideErrors() {
+      document.getElementById('login-error').classList.add('hidden');
+      document.getElementById('login-success').classList.add('hidden');
+      document.getElementById('register-error').classList.add('hidden');
+    }
+
+    function showMsg(type, msg) {
+      const el = document.getElementById(type);
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      hideErrors();
+      
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('login-btn');
+      
+      btn.disabled = true; btn.textContent = 'Signing in...';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          showMsg('login-error', data.error || 'Login failed.');
+        } else if (data.data.user.role !== 'admin') {
+          showMsg('login-error', 'Access denied: You are not an administrator.');
+        } else {
+          sessionStorage.setItem('accessToken', data.data.accessToken);
+          sessionStorage.setItem('currentUser', JSON.stringify(data.data.user));
+          window.location.href = '/admin.html';
+        }
+      } catch (err) {
+        showMsg('login-error', 'Connection error. Please try again.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Sign In';
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      hideErrors();
+      
+      const name = document.getElementById('reg-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const btn = document.getElementById('register-btn');
+      
+      btn.disabled = true; btn.textContent = 'Creating...';
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role: 'admin' })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          showMsg('register-error', data.error || 'Registration failed.');
+        } else {
+          toggleView('login');
+          showMsg('login-success', 'Admin account created successfully! You can now log in.');
+          document.getElementById('login-email').value = email;
+          document.getElementById('login-password').value = '';
+        }
+      } catch (err) {
+        showMsg('register-error', 'Connection error. Please try again.');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Create Account';
+      }
+    }
+  </script>
+</body>
+</html>

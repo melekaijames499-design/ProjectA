@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — SmartFarm Irrigation System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#1B4332', light: '#2D6A4F', pale: '#D8F3DC' },
+            secondary: '#52B788',
+            accent: { DEFAULT: '#F59E0B', dark: '#D97706' },
+          },
+          fontFamily: { sans: ['Inter','sans-serif'], display: ['Playfair Display','serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-green-900 via-primary to-green-800 flex items-center justify-center p-4">
+
+  <div class="w-full max-w-md">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <a href="/index.html" class="inline-flex items-center gap-3">
+        <div class="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center text-2xl shadow-lg">🌱</div>
+        <div class="text-left">
+          <p class="font-display font-bold text-white text-2xl">SmartFarm</p>
+          <p class="text-green-300 text-xs -mt-1">Irrigation System</p>
+        </div>
+      </a>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-3xl shadow-2xl p-8 md:p-10">
+      <h1 class="text-2xl font-display font-bold text-primary mb-1">Welcome Back</h1>
+      <p class="text-sm text-gray-500 mb-8">Sign in to access your farm dashboard.</p>
+
+      <!-- Success from registration -->
+      <div id="success-banner" class="hidden mb-5 p-4 bg-green-50 border border-green-200 rounded-xl">
+        <p class="text-sm text-green-700 font-medium">✅ Account created! You can now sign in.</p>
+      </div>
+
+      <!-- Error Banner -->
+      <div id="error-banner" class="hidden mb-5 p-4 bg-red-50 border border-red-200 rounded-xl">
+        <p id="error-text" class="text-sm text-red-700 font-medium"></p>
+      </div>
+
+      <!-- Form -->
+      <div class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+          <input type="email" id="email" placeholder="yourname@email.com" autocomplete="email"
+            class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary transition-all">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <div class="relative">
+            <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password"
+              class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary pr-12 transition-all">
+            <button type="button" onclick="togglePassword()" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600 text-lg">👁</button>
+          </div>
+        </div>
+
+        <button onclick="handleLogin()" id="login-btn"
+          class="w-full bg-primary hover:bg-primary-light text-white font-bold py-4 rounded-xl transition-all shadow-md">
+          Sign In
+        </button>
+      </div>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-3 my-6">
+        <div class="flex-1 h-px bg-gray-200"></div>
+        <span class="text-xs text-gray-400">or</span>
+        <div class="flex-1 h-px bg-gray-200"></div>
+      </div>
+
+      <p class="text-center text-sm text-gray-500">
+        Don't have an account?
+        <a href="/register.html" class="text-secondary font-semibold hover:text-primary transition-colors">Create one free</a>
+      </p>
+
+      <!-- API status -->
+      <div class="mt-8 pt-4 border-t border-gray-100 flex items-center gap-2">
+        <div id="api-dot" class="w-2 h-2 rounded-full bg-gray-300"></div>
+        <span id="api-status" class="text-xs text-gray-400">Checking server...</span>
+      </div>
+    </div>
+
+    <p class="text-center text-xs text-white/40 mt-6">
+      <a href="/index.html" class="hover:text-white">← Back to home</a>
+    </p>
+  </div>
+
+  <script>
+    function togglePassword() {
+      const p = document.getElementById('password');
+      p.type = p.type === 'password' ? 'text' : 'password';
+    }
+
+    function showError(msg) {
+      document.getElementById('error-text').textContent = msg;
+      document.getElementById('error-banner').classList.remove('hidden');
+    }
+
+    function hideError() {
+      document.getElementById('error-banner').classList.add('hidden');
+    }
+
+    function redirectToPortal(role) {
+      const map = { admin: '/admin.html', farmer: '/farmer.html', viewer: '/viewer.html' };
+      window.location.href = map[role] || '/login.html';
+    }
+
+    async function handleLogin() {
+      hideError();
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const btn      = document.getElementById('login-btn');
+
+      if (!email || !password) {
+        showError('Please enter your email and password.');
+        return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = 'Signing in...';
+
+      try {
+        const res  = await fetch('/api/auth/login', {
+          method:      'POST',
+          headers:     { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body:        JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          showError(data.error || 'Login failed. Check your credentials.');
+          return;
+        }
+
+        sessionStorage.setItem('accessToken', data.data.accessToken);
+        sessionStorage.setItem('currentUser', JSON.stringify(data.data.user));
+        redirectToPortal(data.data.user.role);
+
+      } catch (err) {
+        showError('Cannot reach server. Make sure the server is running.');
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Sign In';
+      }
+    }
+
+    document.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleLogin(); });
+
+    window.addEventListener('load', () => {
+      const token = sessionStorage.getItem('accessToken');
+      const user  = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+      if (token && user) redirectToPortal(user.role);
+
+      fetch('/api/health').then(r => r.json()).then(data => {
+        if (data.success) {
+          document.getElementById('api-dot').className    = 'w-2 h-2 rounded-full bg-green-500';
+          document.getElementById('api-status').textContent = 'Server connected';
+        }
+      }).catch(() => {
+        document.getElementById('api-dot').className    = 'w-2 h-2 rounded-full bg-red-500';
+        document.getElementById('api-status').textContent = 'Server unreachable';
+      });
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('error') === 'unauthorized') showError('You do not have permission to access that page.');
+      if (params.get('registered') === 'true') document.getElementById('success-banner').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>
